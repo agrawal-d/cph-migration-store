@@ -1,26 +1,26 @@
 import * as vscode from 'vscode';
 import { WebviewToVSEvent } from '../types';
 import { killRunning } from '../runs/executions';
-import { readFileSync } from 'fs';
+import path from 'path';
 
-let resultsWebView: vscode.WebviewPanel | undefined;
+let resultsPanel: vscode.WebviewPanel | undefined;
 
 /**
  * Creates a 2x1 grid 0.75+0.25
  */
-function createLayout() {
-    vscode.commands.executeCommand('vscode.setEditorLayout', {
+const createLayout = (): Thenable<void> => {
+    return vscode.commands.executeCommand('vscode.setEditorLayout', {
         orientation: 0,
         groups: [
             { groups: [{}], size: 0.75 },
             { groups: [{}], size: 0.25 },
         ],
     });
-}
+};
 
-const initializeWebView = () => {
+export const initializeWebView = (): void => {
     console.log('Initializing webview');
-    resultsWebView = vscode.window.createWebviewPanel(
+    resultsPanel = vscode.window.createWebviewPanel(
         'evalResults',
         'Judge Results',
         vscode.ViewColumn.Beside,
@@ -30,20 +30,20 @@ const initializeWebView = () => {
         },
     );
 
-    resultsWebView.onDidDispose(() => {
-        resultsWebView = undefined;
+    resultsPanel.onDidDispose(() => {
+        resultsPanel = undefined;
     });
 };
 
-const setupMessageListeners = () => {
-    if (resultsWebView === undefined) {
+const setupMessageListeners = (): void => {
+    if (resultsPanel === undefined) {
         console.warn(
             "Failed to set up message listeners for web view because it's undefined",
         );
         return;
     }
     // Events from WebView to Extension
-    resultsWebView.webview.onDidReceiveMessage((message: WebviewToVSEvent) => {
+    resultsPanel.webview.onDidReceiveMessage((message: WebviewToVSEvent) => {
         switch (message.command) {
             case 'run-all-and-save': {
                 break;
@@ -62,8 +62,8 @@ const setupMessageListeners = () => {
     });
 };
 
-export const startWebVeiw = () => {
-    if (resultsWebView !== undefined) {
+export const startWebVeiw = (): void => {
+    if (resultsPanel !== undefined) {
         initializeWebView();
         createLayout();
         setupMessageListeners();
@@ -71,6 +71,29 @@ export const startWebVeiw = () => {
         console.log('Webivew exists - skipping creation');
     }
 };
-export const baseWebviewHTML = () => {
-    const rawHTML = readFileSync('./frontend/index.html');
+
+export const setBaseWebViewHTML = (context: vscode.ExtensionContext): void => {
+    if (resultsPanel === undefined) {
+        throw new Error('Webview is undefined');
+        console.error('Webview us undefined');
+    }
+    const appScript = resultsPanel.webview.asWebviewUri(
+        vscode.Uri.file(
+            path.join(context.extensionPath, 'dist', 'frontend.module.js'),
+        ),
+    );
+    console.log(appScript);
+    const html = `<!DOCTYPE html lang="EN">
+<html>
+<head>
+  <meta charset="UTF-8" />
+</head>
+<body>
+  <div id="app"></div>
+  <script src="${appScript}"></script>
+</body>
+
+</html>
+`;
+    resultsPanel.webview.html = html;
 };

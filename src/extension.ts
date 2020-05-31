@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import { setupEventListeners, setupCompanionServer } from './companion';
 import runTestCases from './runs/runTestCases';
+import { setBaseWebViewHTML, initializeWebView } from './webview';
 
 const registerCommands = (context: vscode.ExtensionContext) => {
     console.log('Registering commands');
@@ -15,9 +16,11 @@ const registerCommands = (context: vscode.ExtensionContext) => {
 export function activate(context: vscode.ExtensionContext) {
     console.log('cph: activate() execution started');
 
+    registerCommands(context);
     setupEventListeners();
     setupCompanionServer();
-    registerCommands(context);
+    initializeWebView();
+    setBaseWebViewHTML(context);
 
     return;
 }

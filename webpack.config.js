@@ -3,11 +3,11 @@
 'use strict';
 
 const path = require('path');
+const CopyPlugin = require('copy-webpack-plugin');
 
 /**@type {import('webpack').Configuration}*/
 const config = {
     target: 'node', // vscode extensions run in a Node.js-context 📖 -> https://webpack.js.org/configuration/node/
-
     entry: './src/extension.ts', // the entry point of this extension, 📖 -> https://webpack.js.org/configuration/entry-context/
     output: {
         // the bundle is stored in the 'dist' folder (check package.json), 📖 -> https://webpack.js.org/configuration/output/
@@ -28,7 +28,7 @@ const config = {
         rules: [
             {
                 test: /\.ts$/,
-                exclude: /node_modules/,
+                exclude: [/node_modules/, /src\/webview\/frontend/],
                 use: [
                     {
                         loader: 'ts-loader',
@@ -37,5 +37,16 @@ const config = {
             },
         ],
     },
+    plugins: [
+        new CopyPlugin({
+            patterns: [
+                {
+                    from: 'src/webview/frontend/index.html',
+                    to: 'frontend/index.html',
+                },
+                { from: 'static', to: 'static' },
+            ],
+        }),
+    ],
 };
 module.exports = config;
