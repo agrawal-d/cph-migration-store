@@ -21,5 +21,5 @@ export const getProblem = (srcPath: string): Problem => {
     } catch (err) {
         throw new Error(err);
     }
-    return JSON.parse(probPath);
+    return JSON.parse(problem);
 };

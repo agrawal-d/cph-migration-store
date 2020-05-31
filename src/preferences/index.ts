@@ -1,7 +1,7 @@
-const workspace = require('vscode').workspace;
+import { workspace } from 'vscode';
 import type { prefSection } from '../types';
 
-export const getPreference = (section: prefSection) => {
+export const getPreference = (section: prefSection): any => {
     return workspace
         .getConfiguration('competitive-programming-helper')
         .get(section);
