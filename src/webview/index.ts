@@ -72,27 +72,42 @@ export const startWebVeiw = (): void => {
     }
 };
 
+export const getExtensionResource = (
+    context: vscode.ExtensionContext,
+    ...args: string[]
+): vscode.Uri => {
+    if (resultsPanel === undefined) {
+        console.error('Webview us undefined');
+        throw new Error('Webview is undefined');
+    }
+
+    return resultsPanel.webview.asWebviewUri(
+        vscode.Uri.file(path.join(context.extensionPath, ...args)),
+    );
+};
+
 export const setBaseWebViewHTML = (context: vscode.ExtensionContext): void => {
     if (resultsPanel === undefined) {
-        throw new Error('Webview is undefined');
         console.error('Webview us undefined');
+        throw new Error('Webview is undefined');
     }
-    const appScript = resultsPanel.webview.asWebviewUri(
-        vscode.Uri.file(
-            path.join(context.extensionPath, 'dist', 'frontend.module.js'),
-        ),
+    const appScript = getExtensionResource(
+        context,
+        'dist',
+        'frontend.module.js',
     );
-    console.log(appScript);
-    const html = `<!DOCTYPE html lang="EN">
+    const appCss = getExtensionResource(context, 'dist', 'app.css');
+    const html = `
+<!DOCTYPE html lang="EN">
 <html>
 <head>
-  <meta charset="UTF-8" />
+<link rel="stylesheet" href="${appCss}">
+<meta charset="UTF-8" />
 </head>
 <body>
-  <div id="app"></div>
-  <script src="${appScript}"></script>
+<div id="app"></div>
+<script src="${appScript}"></script>
 </body>
-
 </html>
 `;
     resultsPanel.webview.html = html;

@@ -37,5 +37,16 @@ const config = {
             },
         ],
     },
+    plugins: [
+        new CopyPlugin({
+            patterns: [
+                {
+                    from: 'src/webview/frontend/app.css',
+                    to: 'app.css',
+                },
+                { from: 'src/webview/frontend/index.html', to: 'index.html' },
+            ],
+        }),
+    ],
 };
 module.exports = config;

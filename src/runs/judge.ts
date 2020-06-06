@@ -1,4 +1,4 @@
-import { TestCase } from '../types';
+import { TestCase, RunResult } from '../types';
 import { EOL } from 'os';
 
 /**
@@ -27,4 +27,22 @@ export const isResultCorrect = (
     }
 
     return true;
+};
+
+export const getBlankResult = (): RunResult => {
+    return {
+        testcase: {
+            input: '',
+            output: '',
+            id: Date.now(),
+        },
+        stderr: '',
+        stdout: '',
+        code: null,
+        signal: null,
+        pass: true,
+        time: 0,
+        timeOut: false,
+        index: null,
+    };
 };

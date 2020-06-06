@@ -23,3 +23,12 @@ export const getProblem = (srcPath: string): Problem => {
     }
     return JSON.parse(problem);
 };
+
+export const saveProblem = (srcPath: string, problem: Problem) => {
+    const probPath = getProbPath(srcPath);
+    try {
+        fs.writeFileSync(probPath, JSON.stringify(problem));
+    } catch (err) {
+        throw new Error(err);
+    }
+};
