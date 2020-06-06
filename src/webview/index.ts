@@ -1,10 +1,11 @@
 import * as vscode from 'vscode';
-import { WebviewToVSEvent } from '../types';
+import { WebviewToVSEvent, Problem, VSToWebViewMessage } from '../types';
 import { killRunning } from '../runs/executions';
 import path from 'path';
+import { runSingleAndSave } from './runSingleAndSave';
 
 let resultsPanel: vscode.WebviewPanel | undefined;
-
+let problemName = '';
 /**
  * Creates a 2x1 grid 0.75+0.25
  */
@@ -32,10 +33,14 @@ export const initializeWebView = (): void => {
 
     resultsPanel.onDidDispose(() => {
         resultsPanel = undefined;
+        clearProblemName();
     });
 };
 
-const setupMessageListeners = (): void => {
+/**
+ * Setup and handle events from WebView to Extension
+ */
+const setupListnersWebViewToExtension = (): void => {
     if (resultsPanel === undefined) {
         console.warn(
             "Failed to set up message listeners for web view because it's undefined",
@@ -43,30 +48,38 @@ const setupMessageListeners = (): void => {
         return;
     }
     // Events from WebView to Extension
-    resultsPanel.webview.onDidReceiveMessage((message: WebviewToVSEvent) => {
-        switch (message.command) {
-            case 'run-all-and-save': {
-                break;
+    resultsPanel.webview.onDidReceiveMessage(
+        async (message: WebviewToVSEvent) => {
+            switch (message.command) {
+                case 'run-all-and-save': {
+                    break;
+                }
+                case 'run-single-and-save': {
+                    const problem = message.problem;
+                    const id = message.id;
+                    runSingleAndSave(problem, id);
+                    break;
+                }
+                case 'kill-running': {
+                    killRunning();
+                    break;
+                }
+                default: {
+                    console.log('Unknown event received from webview');
+                }
             }
-            case 'run-single-and-save': {
-                break;
-            }
-            case 'kill-running': {
-                killRunning();
-                break;
-            }
-            default: {
-                console.log('Unknown event received from webview');
-            }
-        }
-    });
+        },
+    );
 };
 
-export const startWebVeiw = (): void => {
-    if (resultsPanel !== undefined) {
+/**
+ * Create and show an empty webview if one is not already open.
+ */
+export const startWebVeiwIfNotActive = (): void => {
+    if (resultsPanel === undefined) {
         initializeWebView();
         createLayout();
-        setupMessageListeners();
+        setupListnersWebViewToExtension();
     } else {
         console.log('Webivew exists - skipping creation');
     }
@@ -86,7 +99,11 @@ export const getExtensionResource = (
     );
 };
 
-export const setBaseWebViewHTML = (context: vscode.ExtensionContext): void => {
+export const setBaseWebViewHTML = (
+    context: vscode.ExtensionContext,
+    problem: Problem,
+): void => {
+    problemName = problem.name;
     if (resultsPanel === undefined) {
         console.error('Webview us undefined');
         throw new Error('Webview is undefined');
@@ -105,10 +122,44 @@ export const setBaseWebViewHTML = (context: vscode.ExtensionContext): void => {
 <meta charset="UTF-8" />
 </head>
 <body>
-<div id="app"></div>
+<div id="problem">
+${JSON.stringify(problem)}
+</div>
+<div id="app">Loading...</div>
 <script src="${appScript}"></script>
 </body>
 </html>
 `;
     resultsPanel.webview.html = html;
+};
+
+/**
+ *
+ * Posts a message to the webview if present.
+ *
+ * @param message The message to be posted
+ */
+export const extensionToWebWiewMessage = async (
+    message: VSToWebViewMessage,
+) => {
+    if (!resultsPanel) {
+        console.error(
+            'Trying to post message to non existent webview',
+            message,
+        );
+        return;
+    }
+    await resultsPanel.webview.postMessage(message);
+};
+
+export const closeWebVeiw = () => {
+    if (resultsPanel) {
+        resultsPanel.dispose();
+    }
+};
+
+export const getWebViewProblemName = () => problemName;
+
+export const clearProblemName = () => {
+    problemName = '';
 };

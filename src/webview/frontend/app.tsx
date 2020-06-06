@@ -1,156 +1,225 @@
 import React, { useState, useEffect } from 'react';
 import ReactDOM from 'react-dom';
-import { Problem, RunResult, WebviewToVSEvent, TestCase } from '../../types';
-import { getBlankResult } from '../../runs/judge';
+import TextareaAutosize from 'react-autosize-textarea';
+import {
+    Problem,
+    RunResult,
+    WebviewToVSEvent,
+    TestCase,
+    Case,
+    VSToWebViewMessage,
+    ResultCommand,
+} from '../../types';
+import { getBlankCase } from '../../runs/judge';
 declare const acquireVsCodeApi: () => {
     postMessage: (message: WebviewToVSEvent) => void;
 };
 const vscodeApi = acquireVsCodeApi();
 
 let savedProblem: Problem | void;
-const reloadIcon = '&#x21BA; ';
-const deleteIcon = '&#x2A2F; ';
+const reloadIcon = '↺';
+const deleteIcon = '⨯';
 
-function Result(props: {
-    result: RunResult;
+function CaseView(props: {
     num: number;
-    rerun: (num: number) => void;
+    case: Case;
+    rerun: (id: number, input: string, output: string) => void;
     remove: (num: number) => void;
 }) {
-    const { result, num, rerun, remove } = props;
-    const [input, useInput] = useState<string>(props.result.testcase.input);
-    const [output, useOutput] = useState<string>(props.result.testcase.output);
+    const { id, result, testcase } = props.case;
 
-    const handleInput = (event: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const [input, useInput] = useState<string>(props.case.testcase.input);
+    const [output, useOutput] = useState<string>(props.case.testcase.output);
+    const [running, useRuning] = useState<boolean>(false);
+
+    const handleInputChange = (
+        event: React.ChangeEvent<HTMLTextAreaElement>,
+    ) => {
         useInput(event.target.value);
     };
 
-    const handleOutput = (event: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const handleOutputChange = (
+        event: React.ChangeEvent<HTMLTextAreaElement>,
+    ) => {
         useOutput(event.target.value);
     };
 
+    const rerun = () => {
+        useRuning(true);
+        props.rerun(id, input, output);
+    };
+
+    useEffect(() => {
+        console.log('Result changed.');
+        useRuning(false);
+    }, [props.case.result]);
+
+    const resultText = running
+        ? '...'
+        : result
+        ? result.stdout.trim() || '\n'
+        : 'Run to show output';
+
     return (
         <div className="case">
-            <div>
-                Testcase ${num}
-                <span className={result.pass ? 'result-pass' : 'result-fail'}>
-                    ${result.pass ? 'Passed' : 'Failed'}
-                </span>
-                <span className="exec-time">{result.time}ms</span>
-                <span className="right time">
+            <div className="case-metadata">
+                <div className="left">
+                    <div className="case-number left">Testcase {props.num}</div>
+                    {result && (
+                        <div className="result-data left">
+                            <span
+                                className={
+                                    result.pass ? 'result-pass' : 'result-fail'
+                                }
+                            >
+                                {result.pass ? 'Passed' : 'Failed'}
+                            </span>
+                            <span className="exec-time">{result.time}ms</span>
+                        </div>
+                    )}
+                    <div className="clearfix"></div>
+                </div>
+                <div className="right time">
                     <button
                         className="btn btn-green"
-                        onClick={() => {
-                            rerun(num);
-                        }}
+                        title="Run Again"
+                        onClick={rerun}
+                        disabled={running}
                     >
                         {reloadIcon}
                     </button>
                     <button
                         className="btn btn-red"
+                        title="Delete Testcase"
                         onClick={() => {
-                            remove(num);
+                            props.remove(id);
                         }}
                     >
                         {deleteIcon}
                     </button>
-                </span>
+                </div>
+                <div className="clearfix"></div>
             </div>
             Input:
-            <textarea
+            <TextareaAutosize
                 className="selectable input-textarea"
-                onChange={handleInput}
-            >
-                ${input}
-            </textarea>
+                onChange={handleInputChange}
+                value={input}
+            />
             Expected Output:
-            <textarea
+            <TextareaAutosize
                 className="selectable expected-textarea"
-                onChange={handleOutput}
-            >
-                {output}
-            </textarea>
+                onChange={handleOutputChange}
+                value={output}
+            />
             Received Output:
-            <textarea className="selectable received-textarea" disabled>
-                {result.stdout}
-            </textarea>
+            <TextareaAutosize
+                className="selectable received-textarea"
+                value={resultText}
+                readOnly
+            />
         </div>
     );
 }
 
+const getProblemFromDOM = (): Problem => {
+    const element = document.getElementById('problem') as HTMLElement;
+    return JSON.parse(element.innerText);
+};
+
+const getCasesFromProblem = (problem: Problem): Case[] => {
+    return problem.tests.map((testCase) => ({
+        id: testCase.id,
+        result: null,
+        testcase: testCase,
+    }));
+};
+
 function App() {
-    const [problem, useProblem] = useState<Problem | void>(undefined);
-    const [results, useResults] = useState<RunResult[]>([getBlankResult()]);
+    const [problem, useProblem] = useState<Problem>(getProblemFromDOM());
+    const [cases, useCases] = useState<Case[]>(getCasesFromProblem(problem));
+
+    savedProblem = problem;
 
     useEffect(() => {
+        savedProblem = problem;
         window.addEventListener('message', (event) => {
-            const data = event.data;
+            const data: VSToWebViewMessage = event.data;
+            console.log('Got event in web view', event);
             switch (data.command) {
-                case 'single-run-result': {
-                    const newResults = results.map((result) => {
-                        if (result.testcase.id === data.result.testcase.id) {
-                            return data.result;
-                        }
-                        return result;
-                    });
-                    useResults(newResults);
+                case 'run-single-result': {
+                    handleRunSingleResult(data);
                     break;
-                }
-                case 'run-all-result': {
-                    useResults(data.results);
                 }
             }
         });
     }, [problem]);
 
-    if (!problem) {
-        return <p>No active problem.</p>;
-    }
-
-    const deriveTestCases = (results: RunResult[]): TestCase[] => {
-        return results.map((result) => result.testcase);
+    const handleRunSingleResult = (data: ResultCommand) => {
+        const idx = problem.tests.findIndex(
+            (testCase) => testCase.id === data.result.id,
+        );
+        if (idx === -1) {
+            console.error('Invalid single result', problem, data);
+            return;
+        }
+        const cases = getCasesFromProblem(problem);
+        cases[idx].result = data.result;
+        useCases(cases);
+        console.log('Cases updated', cases);
     };
 
-    const rerun = (num: number) => {
+    const rerun = (id: number, input: string, output: string) => {
+        const idx = problem.tests.findIndex((testCase) => testCase.id === id);
+
+        if (idx === -1) {
+            console.log('No id in problem tests', problem, id);
+            return;
+        }
+
+        problem.tests[idx].input = input;
+        problem.tests[idx].output = output;
+
         vscodeApi.postMessage({
             command: 'run-single-and-save',
             problem,
-            testCases: deriveTestCases(results),
-            index: num,
+            id,
         });
     };
 
-    const remove = (num: number) => {
-        let newResults = results.filter((_value, index) => index !== num);
-        if (newResults.length === 0) {
-            newResults = [getBlankResult()];
-        }
-        vscodeApi.postMessage({
-            command: 'save',
-            problem,
-            testCases: deriveTestCases(newResults),
-        });
-        useResults(newResults);
+    const remove = (_id: number) => {
+        // let newResults = cases.filter((_value, index) => index !== num);
+        // if (newResults.length === 0) {
+        //     newResults = [getBlankCase(problem)];
+        // }
+        // vscodeApi.postMessage({
+        //     command: 'save',
+        //     problem,
+        //     testCases: deriveTestCases(newResults),
+        // });
+        // useCases(newResults);
     };
 
-    let cases;
-    let num = 1;
-    if (results) {
-        results.forEach((item: RunResult) => {
-            cases.push(
-                <Result
-                    result={item}
-                    num={num}
-                    rerun={rerun}
-                    remove={remove}
-                />,
-            );
-        });
+    if (!problem) {
+        return <p>No active problem.</p>;
     }
-
+    const views: JSX.Element[] = [];
+    cases.forEach((value, index) => {
+        views.push(
+            <CaseView
+                num={index + 1}
+                case={value}
+                rerun={rerun}
+                remove={remove}
+            ></CaseView>,
+        );
+    });
     return (
         <div className="ui">
-            <div className="results"></div>
+            <div className="meta">
+                <h1 className="problem-name">{problem.name}</h1>
+            </div>
+            <div className="results">{views}</div>
             <div className="actions"></div>
         </div>
     );

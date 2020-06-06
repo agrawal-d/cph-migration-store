@@ -1,9 +1,23 @@
+import * as vscode from 'vscode';
+
+declare module NodeJS {
+    interface Global {
+        context: vscode.ExtensionContext;
+    }
+}
+
 /** Valid name for a VS Code preference section for the extension */
-export type prefSection = 'binPath' | 'defaultLanguage' | 'runTimeOut';
+export type prefSection =
+    | 'saveLocation'
+    | 'defaultLanguage'
+    | 'runTimeOut'
+    | 'argsC'
+    | 'argsCpp'
+    | 'argsRust'
+    | 'argsPython';
 
 export type Language = {
     name: 'python' | 'c' | 'cpp' | 'rust';
-    extension: 'c' | 'c++' | 'rs' | 'py';
     compiler: string;
     args: string[];
     skipCompile: boolean;
@@ -26,26 +40,33 @@ export type Problem = {
     srcPath: string;
 };
 
-export type RunResult = {
-    index: number | null;
+export type Case = {
+    id: number;
+    result: RunResult | null;
     testcase: TestCase;
+};
+
+export type Run = {
     stdout: string;
     stderr: string;
     code: number | null;
     signal: string | null;
     time: number;
     timeOut: boolean;
-    pass: boolean;
 };
+
+export type RunResult = {
+    pass: boolean | null;
+    id: number;
+} & Run;
 
 export type WebviewMessageCommon = {
     problem: Problem;
-    testCases: TestCase[];
 };
 
 export type RunSingleCommand = {
     command: 'run-single-and-save';
-    index: number;
+    id: number;
 } & WebviewMessageCommon;
 
 export type RunAllCommand = {
@@ -65,3 +86,10 @@ export type WebviewToVSEvent =
     | RunSingleCommand
     | KillRunningCommand
     | SaveCommand;
+
+export type ResultCommand = {
+    command: 'run-single-result';
+    result: RunResult;
+};
+
+export type VSToWebViewMessage = ResultCommand;

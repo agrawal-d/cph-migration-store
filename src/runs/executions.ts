@@ -1,11 +1,14 @@
-import { RunResult, Language } from '../types';
+import { RunResult, Language, TestCase, Run } from '../types';
 import { spawn, ChildProcessWithoutNullStreams } from 'child_process';
 import config from '../config';
-import { getPreference } from '../preferences';
+import { getLanguage } from '../utils';
+import path from 'path';
+import { getTimeOutPref } from '../preferences';
+import { isResultCorrect } from './judge';
 const runningBinaries: ChildProcessWithoutNullStreams[] = [];
 
 /**
- * The response of a single testcase run
+ * Run a single testcase, and return the raw results, without judging.
  *
  * @param binPath path to the executable binary
  * @param input string to be piped into the stdin of the spawned process
@@ -14,8 +17,9 @@ export const runTestCase = (
     language: Language,
     binPath: string,
     input: string,
-): Promise<RunResult> => {
-    const result: RunResult = {
+): Promise<Run> => {
+    console.log('Running testcase', language, binPath, input);
+    const result: Run = {
         stdout: '',
         stderr: '',
         code: null,
@@ -25,6 +29,11 @@ export const runTestCase = (
     };
     const spawnOpts = { timeout: config.timeout };
     let process: ChildProcessWithoutNullStreams;
+
+    const killer = setTimeout(() => {
+        result.timeOut = true;
+        process.kill();
+    }, getTimeOutPref());
 
     switch (language.name) {
         case 'python': {
@@ -40,17 +49,9 @@ export const runTestCase = (
         }
     }
 
-    const killer = setTimeout(() => {
-        result.timeOut = true;
-        process.kill();
-    }, getPreference('runTimeOut'));
-
     const begin = Date.now();
-    const ret: Promise<RunResult> = new Promise((resolve) => {
+    const ret: Promise<Run> = new Promise((resolve) => {
         runningBinaries.push(process);
-        process.stdin.write(input);
-        process.stdin.end();
-        process.stderr.on('data', (data) => (result.stderr += data));
         process.stdout.on('data', (data) => (result.stdout += data));
         process.on('exit', (code, signal) => {
             const end = Date.now();
@@ -60,12 +61,18 @@ export const runTestCase = (
             result.time = end - begin;
             runningBinaries.pop();
         });
+
+        process.stdin.write(input);
+        process.stdin.end();
+        process.stderr.on('data', (data) => (result.stderr += data));
+
         resolve(result);
     });
 
     return ret;
 };
 
+/** Remove the generated binary from the file system, if present */
 export const deleteBinary = (language: Language, binPath: string) => {
     if (language.skipCompile) {
         console.log(
@@ -78,6 +85,7 @@ export const deleteBinary = (language: Language, binPath: string) => {
     spawn('del', [binPath]);
 };
 
+/** Kill all running binaries. Usually, only one should be running at a time. */
 export const killRunning = () => {
     runningBinaries.forEach((process) => process.kill());
 };
