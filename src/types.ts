@@ -87,9 +87,14 @@ export type WebviewToVSEvent =
     | KillRunningCommand
     | SaveCommand;
 
+export type RunningCommand = {
+    command: 'running';
+    id: number;
+} & WebviewMessageCommon;
+
 export type ResultCommand = {
     command: 'run-single-result';
     result: RunResult;
-};
+} & WebviewMessageCommon;
 
-export type VSToWebViewMessage = ResultCommand;
+export type VSToWebViewMessage = ResultCommand | RunningCommand;

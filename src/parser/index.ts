@@ -20,7 +20,7 @@ export const getProbSaveLocation = (srcPath: string): string => {
     return `${srcPath}.prob`;
 };
 
-/** Get the problem for a source. Throws if does not exist on the filesystem. */
+/** Get the problem for a source, `null` if does not exist on the filesystem. */
 export const getProblem = (srcPath: string): Problem | null => {
     const probPath = getProbSaveLocation(srcPath);
     let problem: string;
@@ -32,6 +32,7 @@ export const getProblem = (srcPath: string): Problem | null => {
     }
 };
 
+/** Save the problem (metadata) */
 export const saveProblem = (srcPath: string, problem: Problem) => {
     const probPath = getProbSaveLocation(srcPath);
     try {

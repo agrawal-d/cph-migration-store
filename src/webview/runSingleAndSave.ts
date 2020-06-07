@@ -7,7 +7,11 @@ import { isResultCorrect } from '../runs/judge';
 import { extensionToWebWiewMessage } from '.';
 import * as vscode from 'vscode';
 
-export const runSingleAndSave = async (problem: Problem, id: number) => {
+export const runSingleAndSave = async (
+    problem: Problem,
+    id: number,
+    skipCompile: boolean = false,
+) => {
     console.log('Run and save started', problem, id);
 
     const srcPath = problem.srcPath;
@@ -26,15 +30,19 @@ export const runSingleAndSave = async (problem: Problem, id: number) => {
     }
 
     saveProblem(srcPath, problem);
-    await compileFile(srcPath);
 
-    if (!compileFile) {
-        console.error('Failed to compile', problem, id);
-        return;
+    if (!skipCompile) {
+        if (!(await compileFile(srcPath))) {
+            console.error('Failed to compile', problem, id);
+            return;
+        }
     }
 
     const run = await runTestCase(language, binPath, testCase.input);
-    deleteBinary(language, binPath);
+
+    if (!skipCompile) {
+        deleteBinary(language, binPath);
+    }
 
     const didError =
         (run.code !== null && run.code !== 0) ||
@@ -50,5 +58,6 @@ export const runSingleAndSave = async (problem: Problem, id: number) => {
     await extensionToWebWiewMessage({
         command: 'run-single-result',
         result,
+        problem,
     });
 };

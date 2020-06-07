@@ -26,7 +26,7 @@ body {
 .btn:hover {
     opacity: 0.8;
 }
-#pane {
+.actions {
     position: fixed;
     bottom: 0px;
     left: 0px;
@@ -131,7 +131,7 @@ textarea:active {
     background: #3393cc91;
     color: white;
     outline: none;
-    margin-right: 2px;
+    margin-right: 4px;
     margin-bottom: 5px;
     border: 2px solid transparent;
 }
@@ -144,6 +144,14 @@ textarea:active {
 .btn:focus {
     border-color: pink;
 }
+.btn-orange {
+    background: orange;
+}
+
+.w-80 {
+    width: 80px;
+}
+
 h4 {
     padding: 5px;
 }
@@ -203,33 +211,32 @@ button:disabled {
 }
 
 .case {
-    border-left: 5px solid var(--vscode-button-background);
+    border-left: 5px solid var(--vscode-input-background);
+    border-radius: 5px;
 }
 
 .case.running {
-    border-left-color: yellow;
-    animation-name: runs;
-    animation-duration: 0.5s;
-    animation-iteration-count: infinite;
+    /* animation: runs 1s linear infinite; */
+    border-color: yellow;
 }
 
 .case.passed {
-    border-left-color: greenyellow;
+    border-left-color: green;
 }
 
 .case.failed {
     border-left-color: orangered;
 }
 
-@keyframes runs {
-    0% {
-        background-color: var(--vscode-sideBar-background);
-    }
+.signal {
+    padding: 4px;
+}
 
+/* @keyframes runs {
     50% {
-        background-color: var(--vscode-button-background);
+        border-color: orange;
     }
     100% {
-        background-color: var(--vscode-sideBar-background);
+        border-color: var(--input-background);
     }
-}
+} */

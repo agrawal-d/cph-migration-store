@@ -69,6 +69,16 @@ export const runTestCase = (
         process.stderr.on('data', (data) => (result.stderr += data));
         process.stdin.write(input);
         process.stdin.end();
+        process.on('error', (err) => {
+            const end = Date.now();
+            clearTimeout(killer);
+            result.code = 1;
+            result.signal = err.name;
+            result.time = end - begin;
+            runningBinaries.pop();
+            console.log('Run Error Result:', result);
+            resolve(result);
+        });
     });
 
     return ret;
@@ -89,5 +99,6 @@ export const deleteBinary = (language: Language, binPath: string) => {
 
 /** Kill all running binaries. Usually, only one should be running at a time. */
 export const killRunning = () => {
+    console.log('Killling binaries');
     runningBinaries.forEach((process) => process.kill());
 };

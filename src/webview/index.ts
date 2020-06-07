@@ -3,9 +3,12 @@ import { WebviewToVSEvent, Problem, VSToWebViewMessage } from '../types';
 import { killRunning } from '../runs/executions';
 import path from 'path';
 import { runSingleAndSave } from './runSingleAndSave';
+import { saveProblem } from '../parser';
+import runAllAndSave from './runAllAndSave';
 
 let resultsPanel: vscode.WebviewPanel | undefined;
 let problemName = '';
+
 /**
  * Creates a 2x1 grid 0.75+0.25
  */
@@ -50,14 +53,21 @@ const setupListnersWebViewToExtension = (): void => {
     // Events from WebView to Extension
     resultsPanel.webview.onDidReceiveMessage(
         async (message: WebviewToVSEvent) => {
+            console.log('Got from webview', message);
             switch (message.command) {
-                case 'run-all-and-save': {
-                    break;
-                }
                 case 'run-single-and-save': {
                     const problem = message.problem;
                     const id = message.id;
                     runSingleAndSave(problem, id);
+                    break;
+                }
+                case 'run-all-and-save': {
+                    const problem = message.problem;
+                    runAllAndSave(problem);
+                    break;
+                }
+                case 'save': {
+                    saveProblem(message.problem.srcPath, message.problem);
                     break;
                 }
                 case 'kill-running': {
@@ -65,7 +75,7 @@ const setupListnersWebViewToExtension = (): void => {
                     break;
                 }
                 default: {
-                    console.log('Unknown event received from webview');
+                    console.error('Unknown event received from webview');
                 }
             }
         },
@@ -122,10 +132,10 @@ export const setBaseWebViewHTML = (
 <meta charset="UTF-8" />
 </head>
 <body>
-<div id="problem">
+<div id="problem" hidden>
 ${JSON.stringify(problem)}
 </div>
-<div id="app">Loading...</div>
+<div id="app">Please close and reopen if you dont see any UI in 3 seconds.</div>
 <script src="${appScript}"></script>
 </body>
 </html>
