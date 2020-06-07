@@ -15,14 +15,15 @@ declare const acquireVsCodeApi: () => {
     postMessage: (message: WebviewToVSEvent) => void;
 };
 const vscodeApi = acquireVsCodeApi();
-let savedProblem: Problem | void;
 
 const getProblemFromDOM = (): Problem => {
+    console.log('Got problem from dom!');
     const element = document.getElementById('problem') as HTMLElement;
     return JSON.parse(element.innerText);
 };
 
 const getCasesFromProblem = (problem: Problem): Case[] => {
+    console.log('Get cases from problem!');
     return problem.tests.map((testCase) => ({
         id: testCase.id,
         result: null,
@@ -31,21 +32,30 @@ const getCasesFromProblem = (problem: Problem): Case[] => {
 };
 
 function App() {
-    const [problem, useProblem] = useState<Problem>(getProblemFromDOM());
-    const [cases, useCases] = useState<Case[]>(getCasesFromProblem(problem));
+    const [problem, useProblem] = useState<Problem>(() => getProblemFromDOM());
+    const [cases, useCases] = useState<Case[]>(() =>
+        getCasesFromProblem(getProblemFromDOM()),
+    );
     const [focusLast, useFocusLast] = useState<boolean>(false);
+    1;
     const [forceRunning, useForceRunning] = useState<number | false>(false);
 
-    savedProblem = problem;
+    // Update problem if cases change. The only place where `useProblem` is
+    // allowed to ensure sync.
+    useEffect(() => {
+        const testCases: TestCase[] = cases.map((c) => c.testcase);
+        console.log(cases);
+        useProblem({
+            ...problem,
+            tests: testCases,
+        });
+    }, [cases]);
 
     useEffect(() => {
-        savedProblem = problem;
-    }, [problem]);
-
-    useEffect(() => {
-        window.addEventListener('message', (event) => {
+        console.log('Adding event listeners');
+        const fn = (event: any) => {
             const data: VSToWebViewMessage = event.data;
-            console.log('Got event in web view', event);
+            console.log('Got event in web view', event.data);
             switch (data.command) {
                 case 'run-single-result': {
                     handleRunSingleResult(data);
@@ -55,12 +65,20 @@ function App() {
                     handleRunning(data);
                     break;
                 }
+                default: {
+                    console.log('Invalid event', event.data);
+                }
             }
-        });
-    }, [problem.name]);
+        };
+        window.addEventListener('message', fn);
+        return () => {
+            console.log('Cleaned up event listeners');
+            window.removeEventListener('message', fn);
+        };
+    }, [problem, cases]);
 
     const handleRunSingleResult = (data: ResultCommand) => {
-        const idx = problem.tests.findIndex(
+        const idx = cases.findIndex(
             (testCase) => testCase.id === data.result.id,
         );
         if (idx === -1) {
@@ -70,11 +88,9 @@ function App() {
         const newCases = cases.slice();
         newCases[idx].result = data.result;
         useCases(newCases);
-        console.log('Cases updated', newCases);
     };
 
     const handleRunning = (data: RunningCommand) => {
-        console.log('Set force running to ', data.id);
         useForceRunning(data.id);
     };
 
@@ -96,19 +112,21 @@ function App() {
         });
     };
 
+    // Remove a case.
     const remove = (id: number) => {
-        const testCases = problem.tests.filter((value) => value.id !== id);
         const newCases = cases.filter((value) => value.id !== id);
-        useProblem({
-            ...problem,
-            tests: testCases,
-        });
-
         useCases(newCases);
-        save();
     };
 
+    // Save problem if it changes.
+    useEffect(() => {
+        save();
+        console.log('Saved', problem);
+    }, [problem]);
+
+    // Create a new Case
     const newCase = () => {
+        console.log(cases);
         const id = Date.now();
         const testCase: TestCase = {
             id,
@@ -124,13 +142,9 @@ function App() {
             },
         ]);
         useFocusLast(true);
-        useProblem({
-            ...problem,
-            tests: [...problem.tests, testCase],
-        });
-        save();
     };
 
+    // Save the problem
     const save = () => {
         vscodeApi.postMessage({
             command: 'save',
@@ -138,6 +152,7 @@ function App() {
         });
     };
 
+    // Stop running executions.
     const stop = () => {
         vscodeApi.postMessage({
             command: 'kill-running',
@@ -146,6 +161,7 @@ function App() {
     };
 
     const runAll = () => {
+        console.log(problem);
         vscodeApi.postMessage({
             command: 'run-all-and-save',
             problem,
@@ -173,18 +189,23 @@ function App() {
         return false;
     };
 
-    const updateProblem = (id: number, input: string, output: string) => {
-        console.log('Problem updated');
-        const idx = problem.tests.findIndex((testCase) => testCase.id === id);
-        if (idx != -1) {
-            const tests = problem.tests.slice(0);
-            tests[idx].input = input;
-            tests[idx].output = output;
-            useProblem({
-                ...problem,
-                tests,
-            });
-        }
+    const updateCase = (id: number, input: string, output: string) => {
+        const newCases: Case[] = cases.map((testCase) => {
+            if (testCase.id === id) {
+                return {
+                    id,
+                    result: testCase.result,
+                    testcase: {
+                        id,
+                        input,
+                        output,
+                    },
+                };
+            } else {
+                return testCase;
+            }
+        });
+        useCases(newCases);
     };
 
     const views: JSX.Element[] = [];
@@ -199,7 +220,7 @@ function App() {
                     remove={remove}
                     doFocus={true}
                     forceRunning={getRunningProp(value)}
-                    updateProblem={updateProblem}
+                    updateCase={updateCase}
                 ></CaseView>,
             );
             debounceFocusLast();
@@ -212,7 +233,7 @@ function App() {
                     key={value.id.toString()}
                     remove={remove}
                     forceRunning={getRunningProp(value)}
-                    updateProblem={updateProblem}
+                    updateCase={updateCase}
                 ></CaseView>,
             );
         }

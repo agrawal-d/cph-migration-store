@@ -10,7 +10,7 @@ export default function CaseView(props: {
     num: number;
     case: Case;
     rerun: (id: number, input: string, output: string) => void;
-    updateProblem: (id: number, input: string, output: string) => void;
+    updateCase: (id: number, input: string, output: string) => void;
     remove: (num: number) => void;
     doFocus?: boolean;
     forceRunning: boolean;
@@ -33,7 +33,7 @@ export default function CaseView(props: {
     }, [props.doFocus]);
 
     useEffect(() => {
-        props.updateProblem(props.case.id, input, output);
+        props.updateCase(props.case.id, input, output);
     }, [input, output]);
 
     useEffect(() => {
@@ -69,12 +69,17 @@ export default function CaseView(props: {
     };
 
     useEffect(() => {
-        console.log('Result changed.');
-        useRuning(false);
         if (props.case.result !== null) {
+            useRuning(false);
             props.case.result.pass ? useMinimized(true) : useMinimized(false);
         }
     }, [props.case.result]);
+
+    useEffect(() => {
+        if (running === true) {
+            useMinimized(true);
+        }
+    }, [running]);
 
     let resultText: string = ' ';
 
@@ -90,7 +95,7 @@ export default function CaseView(props: {
     if (running) {
         resultText = '...';
     }
-    const passFailText = result ? (result.pass ? 'passed' : 'failed') : '';
+    let passFailText = result ? (result.pass ? 'passed' : 'failed') : '';
     const caseClassName = 'case ' + (running ? 'running' : passFailText);
     const timeText = result?.timeOut ? 'Timed Out' : result?.time + 'ms';
 
@@ -99,7 +104,8 @@ export default function CaseView(props: {
             <div className="case-metadata">
                 <div className="left">
                     <div className="case-number left">Testcase {props.num}</div>
-                    {result && (
+                    {running && <span className="running-text">Running</span>}
+                    {result && !running && (
                         <div className="result-data left">
                             <span
                                 className={
@@ -132,13 +138,21 @@ export default function CaseView(props: {
                         {deleteIcon}
                     </button>
                     {minimized && (
-                        <button className="btn btn-w80" onClick={expand}>
-                            [+] Expand
+                        <button
+                            className="btn btn-w80"
+                            onClick={expand}
+                            title="Expand"
+                        >
+                            [+]
                         </button>
                     )}
                     {!minimized && (
-                        <button className="btn w80" onClick={minimize}>
-                            [-] Minimize
+                        <button
+                            className="btn w80"
+                            onClick={minimize}
+                            title="Minimize"
+                        >
+                            [-]
                         </button>
                     )}
                 </div>

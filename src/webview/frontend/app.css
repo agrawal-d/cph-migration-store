@@ -203,6 +203,12 @@ button:disabled {
     color: orangered;
     padding-right: 5px;
 }
+.running-text {
+    color: yellow;
+    padding-right: 5px;
+    padding-left: 5px;
+    font-size: 1.15em;
+}
 
 .problem-name {
     font-size: 18px;
