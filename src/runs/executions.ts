@@ -52,7 +52,6 @@ export const runTestCase = (
     const begin = Date.now();
     const ret: Promise<Run> = new Promise((resolve) => {
         runningBinaries.push(process);
-        process.stdout.on('data', (data) => (result.stdout += data));
         process.on('exit', (code, signal) => {
             const end = Date.now();
             clearTimeout(killer);
@@ -60,13 +59,16 @@ export const runTestCase = (
             result.signal = signal;
             result.time = end - begin;
             runningBinaries.pop();
+            console.log('Run Result:', result);
+            resolve(result);
         });
 
+        process.stdout.on('data', (data) => {
+            result.stdout += data;
+        });
+        process.stderr.on('data', (data) => (result.stderr += data));
         process.stdin.write(input);
         process.stdin.end();
-        process.stderr.on('data', (data) => (result.stderr += data));
-
-        resolve(result);
     });
 
     return ret;

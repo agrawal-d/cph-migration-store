@@ -15,6 +15,7 @@ export const isResultCorrect = (
     const resultLines = stdout.trim().split(EOL);
 
     if (expectedLines.length !== resultLines.length) {
+        console.log('Failed precheck', expectedLines, resultLines);
         return false;
     }
 
@@ -22,6 +23,11 @@ export const isResultCorrect = (
 
     for (let i = 0; i < len; i++) {
         if (expectedLines[i].trim() !== resultLines[i].trim()) {
+            console.log(
+                'Judge Failed here: ',
+                expectedLines[i].trim(),
+                resultLines[i].trim(),
+            );
             return false;
         }
     }

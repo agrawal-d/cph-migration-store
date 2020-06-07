@@ -2,9 +2,10 @@ import { Problem, RunResult } from '../types';
 import { getLanguage } from '../utils';
 import { getBinSaveLocation, compileFile } from '../runs/compiler';
 import { saveProblem } from '../parser';
-import { runTestCase } from '../runs/executions';
+import { runTestCase, deleteBinary } from '../runs/executions';
 import { isResultCorrect } from '../runs/judge';
 import { extensionToWebWiewMessage } from '.';
+import * as vscode from 'vscode';
 
 export const runSingleAndSave = async (problem: Problem, id: number) => {
     console.log('Run and save started', problem, id);
@@ -14,6 +15,10 @@ export const runSingleAndSave = async (problem: Problem, id: number) => {
     const binPath = getBinSaveLocation(srcPath);
     const idx = problem.tests.findIndex((value) => value.id === id);
     const testCase = problem.tests[idx];
+
+    const textEditor = await vscode.workspace.openTextDocument(srcPath);
+    await vscode.window.showTextDocument(textEditor, vscode.ViewColumn.One);
+    await textEditor.save();
 
     if (!testCase) {
         console.error('Invalid id', id, problem);
@@ -29,6 +34,8 @@ export const runSingleAndSave = async (problem: Problem, id: number) => {
     }
 
     const run = await runTestCase(language, binPath, testCase.input);
+    deleteBinary(language, binPath);
+
     const didError =
         (run.code !== null && run.code !== 0) ||
         run.signal !== null ||

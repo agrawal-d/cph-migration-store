@@ -57,11 +57,14 @@ function CaseView(props: {
     const resultText = running
         ? '...'
         : result
-        ? result.stdout.trim() || '\n'
+        ? result.stdout.trim() || ' '
         : 'Run to show output';
 
+    const passFailText = result ? (result.pass ? 'passed' : 'failed') : '';
+    const caseClassName = 'case ' + (running ? 'running' : passFailText);
+
     return (
-        <div className="case">
+        <div className={caseClassName}>
             <div className="case-metadata">
                 <div className="left">
                     <div className="case-number left">Testcase {props.num}</div>

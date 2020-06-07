@@ -201,3 +201,35 @@ button:disabled {
     margin: 5px;
     padding: 10px;
 }
+
+.case {
+    border-left: 5px solid var(--vscode-button-background);
+}
+
+.case.running {
+    border-left-color: yellow;
+    animation-name: runs;
+    animation-duration: 0.5s;
+    animation-iteration-count: infinite;
+}
+
+.case.passed {
+    border-left-color: greenyellow;
+}
+
+.case.failed {
+    border-left-color: orangered;
+}
+
+@keyframes runs {
+    0% {
+        background-color: var(--vscode-sideBar-background);
+    }
+
+    50% {
+        background-color: var(--vscode-button-background);
+    }
+    100% {
+        background-color: var(--vscode-sideBar-background);
+    }
+}

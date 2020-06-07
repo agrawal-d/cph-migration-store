@@ -54,6 +54,7 @@ const getFlags = (language: Language, srcPath: string): string[] => {
  * @param srcPath location of the source code
  */
 export const compileFile = (srcPath: string): Promise<boolean> => {
+    console.log('Compilation Started');
     ocHide();
     const language: Language = getLanguage(srcPath);
     const flags: string[] = getFlags(language, srcPath);
@@ -73,9 +74,10 @@ export const compileFile = (srcPath: string): Promise<boolean> => {
             if (exitcode === 1 || error !== '') {
                 ocAppend('Errors while compiling:\n' + error);
                 ocShow();
+                console.error('Compilation failed');
                 resolve(false);
             }
-
+            console.log('Compilation passed');
             resolve(true);
         });
     });
